@@ -1,6 +1,8 @@
 # ManuscriptTools
 
 ```python
+from figure_utils import axis_to_igor
+
 # This is an example using the main plot functionality in matplotlib.
 for idx in range(len(u_types)):
     if ('good' in u_types[idx]):
