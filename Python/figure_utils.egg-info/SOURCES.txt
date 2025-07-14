@@ -1,0 +1,8 @@
+setup.py
+figure_utils/__init__.py
+figure_utils/figure_utils.py
+figure_utils.egg-info/PKG-INFO
+figure_utils.egg-info/SOURCES.txt
+figure_utils.egg-info/dependency_links.txt
+figure_utils.egg-info/requires.txt
+figure_utils.egg-info/top_level.txt

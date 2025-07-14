@@ -80,7 +80,25 @@ Function SaveAllGraphsAsPDF(visibleOnly)
         index += 1
     while(1)
 End
-
+ 
+Function MergeSelectedtoCurrent()
+ 
+    string theCmd
+    variable refNum, ic, nExp
+    
+    Open/D/R/MULT=1/F="Igor Prop Experiments (*.pxp):.pxp;"/M="Select experiments to merge" refNum
+    if (strlen(S_filename)==0)
+        return 0
+    endif
+    
+    nExp = ItemsInList(S_filename,"\r")
+    for (ic=0;ic<nExp;ic+=1)
+        sprintf theCmd, "MERGEEXPERIMENT %s", StringFromList(ic,S_filename,"\r")
+        Execute/P/Q theCmd
+    endfor
+    
+    return 0
+end
 
 Macro MakeFig(h5name)
 	string h5name
@@ -199,6 +217,200 @@ Function RefreshAllGraphs()
       index += 1
 	while(1)
 End
+
+
+// Polar plot utilities.
+//
+//Macro MakePolarPlot(h5name)
+//	string h5name
+//	MakePolarFig(h5name)
+//end
+//
+//function MakePolarFig(graphname)
+//	string graphname
+//	String gName, line_waves, lim_wave, curWave, tName, curPrefix,color,X,start,delta,marker,markerfacecolor,errbar,errbarx,linestylevalue
+//	Variable i,r,g,b,m,l,Xscale,Yscale
+//	Variable str_pos
+//	
+//	variable h5file
+//	string fullPath = FullPathToHomeFolder()
+//	string h5path= fullPath + graphname +".h5"
+//	if (WinType(graphname)==1)
+//		KillWindow $graphname
+//	endif
+//	KillDataFolder/Z root:$graphname
+//	NewDataFolder/o/s root:$graphname
+//	HDF5OpenFile h5file as h5path
+//	HDF5LoadGroup :,h5file , graphname
+//	HDF5CloseFile h5file
+//	
+//	gName = graphname
+//	
+//	gName = WMNewPolarGraph("", graphname)
+//	
+//	// Add the waves to the graph.
+//	line_waves = WaveList("*_Y",";","")
+//	do 
+//		curWave = StringFromList(i, line_waves)
+//		if (strlen(curWave) == 0)
+//			break
+//		endif
+//		str_pos = strsearch (curWave, "_Y", 0)
+//		curPrefix = curWave[0, str_pos-1]
+//
+//		//get X data
+//		sprintf  X, "%s_X",  curPrefix
+//		
+//		tName = WMPolarAppendTrace(gName, $curWave, $X, 360)
+//		
+//		//set color
+//		sprintf  color, "%s_color",  curPrefix
+//		if (WaveExists($color))	
+//			Wave colorWave = $color	
+//			r = round(colorWave[0]*(2^16-1))
+//			g = round(colorWave[1]*(2^16-1))
+//			b = round(colorWave[2]*(2^16-1))
+//			ModifyGraph rgb($tName) = (r,g,b)
+//		endif
+//		i += 1
+//	while(1)
+//	
+//	DoWindow/C/T $graphname, graphname
+//	
+//	SetDataFolder root:
+//	DoWindow/C/R $graphname
+//end
+//
+//function FormatPolarGraph(graphname)
+//	string graphname
+//	
+//	// If the graph doesn't exist, create it, else grab the graph
+//	if ((strlen(graphname) == 0) || (wintype(graphname) == 0))
+//		MakePolarFig(graphname)
+//	endif
+//	
+//	DoWindow /F $graphname
+//	
+//	ModifyGraph height=144,expand=2
+//	ModifyGraph margin=2
+//	
+//	WMPolarGraphSetVar(graphname, "angleAxisThick", 0.5)
+//	WMPolarGraphSetVar(graphname, "anglePerCircle", 360)
+//	WMPolarGraphSetVar(graphname, "angleRange", 360)
+//	WMPolarGraphSetVar(graphname, "anglePerCirc", 360)
+//	
+//	WMPolarGraphSetStr(graphname, "doMajorAngleTicks", "manual")
+//	WMPolarGraphSetVar(graphname, "majorAngleInc", 90) // major ticks in 30 deg steps
+//	WMPolarGraphSetVar(graphname, "minorAngleTicks", 2) // minor ticks in 10 deg steps
+//	WMPolarGraphSetStr(graphname, "angleTicksLocation", "Outside")
+//	WMPolarGraphSetVar(graphname, "doAngleTickLabelSubRange", 1)
+//	WMPolarGraphSetVar(graphname, "angleTickLabelRangeStart", 0)
+//	WMPolarGraphSetVar(graphname, "angleTickLabelRangeExtent", 90)
+//	WMPolarGraphSetStr(graphname, "angleTickLabelNotation", "%g°")
+//
+//	WMPolarGraphSetVar(graphname, "doPolarGrids", 0)
+//	WMPolarGraphSetVar(graphname, "doRadiusTickLabels", 0)
+//	WMPolarGraphSetStr(graphname, "radiusAxesWhere", "  Off")	// note the leading spaces, cf. WMPolarAnglesForRadiusAxes
+//	WMPolarGraphSetStr(graphname, "radiusTicksLocation", "Off")
+//
+//	WMPolarGraphSetVar(graphname, "majorTickLength", 2)
+//	WMPolarGraphSetVar(graphname, "majorTickThick", 0.5)
+//	WMPolarGraphSetVar(graphname, "minorTickLength", 1)
+//	WMPolarGraphSetVar(graphname, "minorTickThick", 0.5)
+//	WMPolarGraphSetVar(graphname, "tickLabelOpaque", 0)
+//	WMPolarGraphSetVar(graphname, "tickLabelFontSize", 7)
+//end
+//
+//static function /s display_polar_graph(graphname, [angle_offset, do_ticks])
+//	
+//	string graphname
+//	variable angle_offset
+//	variable do_ticks
+//	
+//	dfref savedf = GetDataFolderDFR()
+//	
+//	if (ParamIsDefault(angle_offset))
+//		angle_offset = 0
+//	endif
+//	if (ParamIsDefault(do_ticks))
+//		do_ticks = 3
+//	endif
+//	
+//	if ((strlen(graphname) == 0) || (wintype(graphname) == 0))
+//		Display /k=1 /W=(10,45,360,345)
+//		DoWindow /C $graphname
+//		graphname = WMNewPolarGraph("", graphname)
+//		WMPolarGraphSetVar(graphname, "zeroAngleWhere", angle_offset)
+//		
+//		WMPolarGraphSetVar(graphname, "angleAxisThick", 0.5)
+//		WMPolarGraphSetStr(graphname, "doMajorAngleTicks", "manual")
+//		WMPolarGraphSetVar(graphname, "majorAngleInc", 30) // major ticks in 30 deg steps
+//		WMPolarGraphSetVar(graphname, "minorAngleTicks", 2) // minor ticks in 10 deg steps
+//		WMPolarGraphSetStr(graphname, "angleTicksLocation", "Outside")
+//		WMPolarGraphSetVar(graphname, "doAngleTickLabelSubRange", 1)
+//		WMPolarGraphSetVar(graphname, "angleTickLabelRangeStart", 0)
+//		WMPolarGraphSetVar(graphname, "angleTickLabelRangeExtent", 360)
+//		WMPolarGraphSetStr(graphname, "angleTickLabelNotation", "%g°")
+//  
+//		WMPolarGraphSetVar(graphname, "doPolarGrids", 0)
+//		WMPolarGraphSetVar(graphname, "doRadiusTickLabels", 0)
+//		WMPolarGraphSetStr(graphname, "radiusAxesWhere", "  All Major Angles")	// note the leading spaces, cf. WMPolarAnglesForRadiusAxes
+//		WMPolarGraphSetStr(graphname, "radiusTicksLocation", "Off")
+//		WMPolarGraphSetVar(graphname, "radiusAxisThick", 1.0)
+//
+//		WMPolarGraphSetVar(graphname, "majorTickLength", 2)
+//		WMPolarGraphSetVar(graphname, "majorTickThick", 0.5)
+//		WMPolarGraphSetVar(graphname, "minorTickLength", 1)
+//		WMPolarGraphSetVar(graphname, "minorTickThick", 0.5)
+//		WMPolarGraphSetVar(graphname, "tickLabelOpaque", 0)
+//		WMPolarGraphSetVar(graphname, "tickLabelFontSize", 7)
+//
+//		// changes
+//		if (do_ticks & 1)
+//			WMPolarGraphSetStr(graphname, "angleTicksLocation", "Outside")
+//		else
+//			WMPolarGraphSetStr(graphname, "angleTicksLocation", "Off")
+//		endif
+//		if (do_ticks & 2)
+//			WMPolarGraphSetVar(graphname, "doMinorAngleTicks", 1)
+//		else
+//			WMPolarGraphSetVar(graphname, "doMinorAngleTicks", 0)
+//		endif
+//		
+//		DoWindow /T $graphname, graphname
+//
+//		// cursor info in angles
+//		string graphdf = "root:packages:WMPolarGraphs:" + graphname
+//		setdatafolder graphdf
+//		// current theta, phi coordinates are stored in global variables in the package folder of the graph
+//		variable /g csrA_theta
+//		variable /g csrA_phi
+//		variable /g csrB_theta
+//		variable /g csrB_phi
+//		// the text box is hidden initially. it shows up and hides with the cursor info box.
+//		string tb 
+//		tb = "\\{"
+//		tb = tb + "\"A = (%.1f, %.1f)\","
+//		tb = tb + graphdf + ":csrA_theta,"
+//		tb = tb + graphdf + ":csrA_phi"
+//		tb = tb + "}"
+//		TextBox /W=$graphname /A=LT /B=1 /E=2 /F=0 /N=tb_angles /X=1 /Y=1 /V=0 tb
+//		tb = "\\{"
+//		tb = tb + "\"B = (%.1f, %.1f)\","
+//		tb = tb + graphdf + ":csrB_theta,"
+//		tb = tb + graphdf + ":csrB_phi"
+//		tb = tb + "}"
+//		AppendText /W=$graphname /N=tb_angles tb
+//		// updates are triggered by a window hook
+//		SetWindow $graphname, hook(polar_graph_hook)=PearlAnglescanProcess#polar_graph_hook
+//	else
+//		// graph window exists
+//		DoWindow /F $graphname
+//	endif
+//
+//	setdatafolder savedf
+//	return graphname
+//end
 
 // Vector of linearly spaced values.
 function linspace(x, y, n, b)
