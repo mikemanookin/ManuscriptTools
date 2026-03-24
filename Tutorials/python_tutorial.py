@@ -39,3 +39,4 @@ axs[1].set_xlabel('axis 1')
 axs[1].set_ylabel('axis 2')
 axs[1].set_title('normalized response')
 axis_to_igor(axs[1], filename='TestScatter', out_dir=out_dir)
+
