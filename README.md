@@ -1,5 +1,21 @@
 # ManuscriptTools
 
+
+Mac (OS15.4.1) and Python (3.11)
+
+Setup
+Download Igor Pro 8 here: https://www.wavemetrics.com/software/igor-pro-8
+Make sure installed into Applications folder
+
+Manuscript Tools repo here: https://github.com/mikemanookin/ManuscriptTools
+Clone and install repo (cd ManuscriptTools/Python -> pip install .)  (I think?)
+
+Create alias for ManookinLabIgorProcedures.ipf  and DisplayFigFromMatlab.ipf in ManuscriptTools and move to Igor Pro 8 Folder/Igor Procedures
+In Igor Pro 8 Folder / WaveMetrics Procedures / File Input Output make alias for HDF5Browser.ipf and move to Igor Pro 8 Folder/Igor Procedures
+
+
+
+
 ```python
 from figure_utils import axis_to_igor
 
