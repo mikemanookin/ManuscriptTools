@@ -1,10 +1,40 @@
-# ManuscriptTools
+# Manuscript Tools
+
+
+
+This has been tested on Igor 7 and Igor 8, but should work on other versions.
+
+Install Igor Pro:
+Download: Igor Pro 8 here: https://www.wavemetrics.com/software/
+
+Install HDF5 Browser (required for version <= 8):
+
+Locate Extensions: Choose Help > Show Igor Pro Folder to find the installation directory.
+Find XOP: Navigate to More Extensions (64-bit)\File Loaders and locate HDF5-64.xop.
+Install XOP: Copy HDF5-64.xop and paste a shortcut into User Files\Igor Extensions (64-bit) (found via Help > Show Igor Pro User Files).
+Activate Browser: Similarly, copy HDF5 Browser.ipf from WaveMetrics Procedures\File Input Output in the Pro folder to the Igor Procedures folder in User Files.
+Restart: Restart Igor Pro.
+
+Clone the github repository:
+git clone https://github.com/mikemanookin/ManuscriptTools.git
+
+Create alias (Mac) or shortcuts (Windows) for the following files in the repo:
+./ManuscriptTools/Igor/DisplayFigFromMatlab.ipf
+./ManuscriptTools/Igor/ManookinLabIgorProcedures.ipf
+
+Copy the aliases/shortcuts to your Igor Procedures user folder:
+'../Documents/WaveMetrics/Igor Pro 8 User Files/Igor Procedures'
+
+This way, any updates in the repo will be immediately available to you after a fresh pull.
+
+The repo contains an example experiment file: ./ManuscriptTools/Igor/ManuscriptFigure.pxp
+Copy this fill to where you want to start making figures. You can rename it as you like. I generally have a separate .pxp file for each figure in a grant/manuscript.
 
 
 Mac (OS15.4.1) and Python (3.11)
 
 Setup
-Download Igor Pro 8 here: https://www.wavemetrics.com/software/igor-pro-8
+
 Make sure installed into Applications folder
 
 Manuscript Tools repo here: https://github.com/mikemanookin/ManuscriptTools
