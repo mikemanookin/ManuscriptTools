@@ -147,5 +147,5 @@ if isempty(fname)
 end
 exportStructToHDF5(s,[fname '.h5'],fname,options);
 if ~strcmp(pwd, basedir)
-    movefile([fname '.h5'], [basedir fname '.h5'],'f');
+    movefile([fname '.h5'], fullfile(basedir,[fname, '.h5']),'f');
 end

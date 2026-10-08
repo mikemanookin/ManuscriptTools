@@ -15,31 +15,6 @@ Function/S FullPathToHomeFolder()
 	return path
 End
 
-// StripH5Extension(name)
-// Loaders take the .h5 base name and append ".h5" themselves; passing "Name.h5" made
-// HDF5LoadGroup look for a group called "Name.h5" (H5Gget_objinfo error). For use from
-// Functions; the Macros below inline the same check because a Macro cannot call a
-// user string function in a string expression.
-Function/S StripH5Extension(name)
-	String name
-	if (strlen(name) > 3 && StringMatch(name[strlen(name)-3, strlen(name)-1], ".h5"))
-		return name[0, strlen(name)-4]
-	endif
-	return name
-End
-
-// 1 if a trace of this name is on the graph, 0 otherwise.
-Function TraceOnGraph(graphName, traceName)
-	String graphName, traceName
-
-	if (WinType(graphName) != 1)
-		return 0
-	endif
-
-	return WhichListItem(traceName, TraceNameList(graphName, ";", 1), ";", 0, 0) >= 0
-End
-
-
 Function SaveAllGraphsAsGraphicsFiles(extension, visibleOnly, format, bitmapRes)
     String extension                // Extension for file name, e.g., ".tif", ".pdf", ".png" . . .
     Variable visibleOnly            // 1 to save only visible graphs, 0 to save visible and hidden graphs.
@@ -129,46 +104,9 @@ Function MergeSelectedtoCurrent()
     return 0
 end
 
-// Draw a filled polygon from x/y waves by streaming the vertices
-// into chunked DrawPoly commands (literal lists, /A to continue).
-// Call SetDrawEnv (fillfgc, xcoord, etc.) before calling this.
-function DrawContourPoly(xW, yW)
-	wave xW, yW
-	
-	variable n = numpnts(yW)
-	variable i, j
-	string cmd, chunk, pair
-	variable chunkSize = 40		// vertex pairs per command; keeps cmd < ~2500 chars
-	
-	i = 0
-	do
-		chunk = ""
-		for (j = 0; j < chunkSize; j += 1)
-			if (i >= n)
-				break
-			endif
-			sprintf pair, "%.7g,%.7g", xW[i], yW[i]
-			if (j > 0)
-				chunk += ","
-			endif
-			chunk += pair
-			i += 1
-		endfor
-		if (i - j == 0)		// first chunk starts the polygon
-			sprintf cmd, "DrawPoly 0, 0, 1, 1, {%s}", chunk
-		else				// subsequent chunks append to it
-			sprintf cmd, "DrawPoly/A {%s}", chunk
-		endif
-		Execute cmd
-	while (i < n)
-end
-
 Macro MakeFig(h5name)
 	string h5name
 	variable h5file
-	if (StringMatch(h5name, "*.h5"))		// accept "Name.h5" as well as "Name"
-		h5name = h5name[0, strlen(h5name)-4]
-	endif
 	string fullPath = FullPathToHomeFolder()
 	string h5path= fullPath +h5name+".h5"
 	if (WinType(h5name)==1)
@@ -176,15 +114,8 @@ Macro MakeFig(h5name)
 	endif
 	KillDataFolder/Z root:$h5name
 	NewDataFolder/o/s root:$h5name
-	HDF5OpenFile/R/Z h5file as h5path
-	if (V_flag != 0)
-		Abort "MakeFig: cannot open " + h5path
-	endif
-	HDF5LoadGroup/Z :, h5file, h5name
-	if (V_flag != 0)
-		HDF5CloseFile h5file		// close before aborting, or the file stays locked (h5py errno 35)
-		Abort "MakeFig: no group '" + h5name + "' in " + h5path + " - pass the file's base name"
-	endif
+	HDF5OpenFile h5file as h5path
+	HDF5LoadGroup :,h5file , h5name
 	HDF5CloseFile h5file
 	DisplayFigFromMatlab(h5name,1)
 	SetDataFolder root:
@@ -195,9 +126,6 @@ end
 Macro MakeImage(h5name)
 	string h5name
 	variable h5file
-	if (StringMatch(h5name, "*.h5"))		// accept "Name.h5" as well as "Name"
-		h5name = h5name[0, strlen(h5name)-4]
-	endif
 	string fullPath = FullPathToHomeFolder()
 	string h5path= fullPath +h5name+".h5"
 	if (WinType(h5name)==1)
@@ -205,15 +133,8 @@ Macro MakeImage(h5name)
 	endif
 	KillDataFolder/Z root:$h5name
 	NewDataFolder/o/s root:$h5name
-	HDF5OpenFile/R/Z h5file as h5path
-	if (V_flag != 0)
-		Abort "MakeImage: cannot open " + h5path
-	endif
-	HDF5LoadGroup/Z :, h5file, h5name
-	if (V_flag != 0)
-		HDF5CloseFile h5file		// close before aborting, or the file stays locked (h5py errno 35)
-		Abort "MakeImage: no group '" + h5name + "' in " + h5path + " - pass the file's base name"
-	endif
+	HDF5OpenFile h5file as h5path
+	HDF5LoadGroup :,h5file , h5name
 	HDF5CloseFile h5file
 	MakeImageFig(h5name)
 	SetDataFolder root:
@@ -230,14 +151,6 @@ Macro FormatGraph()
 	ModifyGraph width=72,height=72
 	ModifyGraph tlOffset(bottom)=-1.5
 	ModifyGraph lsize=0.5
-	ModifyGraph expand=2
-End
-
-Macro MakeRFGraph(h5name)
-	string h5name
-	MakeMosaicGraph(h5name)
-	MosaicFillByColor(h5name, alpha=32768)
-	ModifyGraph lsize=1
 	ModifyGraph expand=2
 End
 
@@ -288,9 +201,6 @@ end
 Function RefreshGraphData(h5name)
 	string h5name
 	variable h5file
-	if (StringMatch(h5name, "*.h5"))		// accept "Name.h5" as well as "Name"
-		h5name = h5name[0, strlen(h5name)-4]
-	endif
 	string fullPath = FullPathToHomeFolder()
 	string h5path= fullPath +h5name+".h5"
 	// Make sure the file exists.
@@ -298,184 +208,19 @@ Function RefreshGraphData(h5name)
 	if (V_flag == 0)
 		SetDataFolder root:$h5name
 		Killwaves/A/Z
-		HDF5OpenFile/R/Z h5file as h5path
-		if (V_flag != 0)
+		HDF5OpenFile h5file as h5path
+		HDF5LoadGroup/o :,h5file , h5name
+		if (V_Flag == 0)
+			HDF5CloseFile h5file
 			SetDataFolder root:
-			print "RefreshGraphData: cannot open " + h5path
-			return 0
-		endif
-		HDF5ListGroup/TYPE=2 h5file, h5name			// datasets in the group = waves the load will create
-		String loaded = S_HDF5ListGroup
-		HDF5LoadGroup/O/Z :, h5file, h5name
-		HDF5CloseFile h5file			// always close, or the file stays locked for other programs
-		SetDataFolder root:
-		if (V_flag != 0)
-			print "RefreshGraphData: no group '" + h5name + "' in " + h5path
-		elseif (WinType(h5name) == 1)
-			ReconcileGraphTraces(h5name, loaded)
+		else
+			HDF5CloseFile h5file
+			printf h5name
+			
 		endif
 	else
 		print "File " + h5name + " does not exist in the data folder."
 	endif
-End
-
-// Find the x/y center of 2D graph. 
-// xCenter and yCenter need to be passed by reference.
-//
-// How you call it from another function:
-//Function MyMainFunction()
-//    // 1. Create local variables to hold the result
-//    Variable centerX, centerY 
-//    
-//    // 2. Call the function using '&' to pass them by reference
-//    GetGraphDataCenter(centerX, centerY)
-//    
-//    // 3. Use the returned values
-//    Print "The calling function received X:", centerX, "and Y:", centerY
-//End
-Function GetGraphDataCenter(xCenter, yCenter, [graphName, xReversed, yReversed])
-    Variable &xCenter, &yCenter         // outputs: centre of the current axis ranges
-    String graphName                    // default: the top graph
-    Variable &xReversed, &yReversed     // optional outputs: 1 when that axis runs high -> low (e.g. mosaics, y downward)
-
-    if (ParamIsDefault(graphName) || strlen(graphName) == 0)
-        graphName = WinName(0, 1)       // top graph; "" is not a valid /W target
-    endif
-    if (WinType(graphName) != 1)
-        DoAlert 0, "Error: Graph '" + graphName + "' does not exist."
-        return -1
-    endif
-
-    // GetAxis reports V_min as the value at the low end of the axis (left / bottom of the plot) and
-    // V_max at the high end, so a reversed axis comes back with V_min > V_max.
-    GetAxis/Q/W=$graphName bottom
-    Variable x0 = (V_Flag == 0) ? V_min : 0, x1 = (V_Flag == 0) ? V_max : 0
-    GetAxis/Q/W=$graphName left
-    Variable y0 = (V_Flag == 0) ? V_min : 0, y1 = (V_Flag == 0) ? V_max : 0
-
-    xCenter = (x0 + x1) / 2
-    yCenter = (y0 + y1) / 2
-    if (!ParamIsDefault(xReversed))
-        xReversed = (x0 > x1)
-    endif
-    if (!ParamIsDefault(yReversed))
-        yReversed = (y0 > y1)
-    endif
-    return 0
-End
-
-// CenterGraph(width, height, [graphName])
-// Give the bottom / left axes the requested spans (axis units), centred where they are now, and
-// KEEP each axis's direction: a mosaic's left axis runs high -> low (y downward, as in the STA
-// image), and SetAxis left, lo, hi with lo < hi would silently flip it back - which is what made
-// the mosaics look mirrored. With a Plan aspect (MakeMosaicGraph) the panel width follows the
-// ratio of the spans. See also MosaicSetExtent (RfMosaics.ipf), which does the same from the
-// DATA extent with optional explicit centres.
-Function CenterGraph(width, height, [graphName])
-    Variable width, height
-    String graphName
-    if (ParamIsDefault(graphName) || strlen(graphName) == 0)
-        graphName = WinName(0, 1)
-    endif
-    if (WinType(graphName) != 1)
-        DoAlert 0, "Error: Graph '" + graphName + "' does not exist."
-        return -1
-    endif
-
-    Variable centerX, centerY, xRev, yRev
-    GetGraphDataCenter(centerX, centerY, graphName=graphName, xReversed=xRev, yReversed=yRev)
-
-    Variable newXMin = centerX - width / 2, newXMax = centerX + width / 2
-    Variable newYMin = centerY - height / 2, newYMax = centerY + height / 2
-
-    // SetAxis axis, a, b puts a at the low end of the axis: pass the larger value first to keep a
-    // reversed axis reversed.
-    if (xRev)
-        SetAxis/W=$graphName bottom, newXMax, newXMin
-    else
-        SetAxis/W=$graphName bottom, newXMin, newXMax
-    endif
-    if (yRev)
-        SetAxis/W=$graphName left, newYMax, newYMin
-    else
-        SetAxis/W=$graphName left, newYMin, newYMax
-    endif
-
-    printf "CenterGraph: %s x %g..%g%s, y %g..%g%s (centre %g, %g)\r", graphName, newXMin, newXMax, SelectString(xRev, "", " (reversed)"), newYMin, newYMax, SelectString(yRev, "", " (reversed)"), centerX, centerY
-    return 0
-End
-
-
-// ReconcileGraphTraces(graphName, loadedNames)
-// After RefreshGraphData reloads a graph's data folder, bring the graph in line with what the
-// file now contains WITHOUT removing anything the user added:
-//   - *_Y waves that are new since the graph was made are appended vs their *_X (with their
-//     *_color when present), so a renamed or added line (e.g. hull_Y -> contour_Y) shows up;
-//   - a trace whose wave lives in the graph's own data folder root:<graphName>: but is no
-//     longer in the file (a stale exported wave) is HIDDEN, not removed - a line is printed
-//     with the ModifyGraph command that shows it again;
-//   - traces of waves anywhere else (ones you appended by hand) are left alone.
-// Images (*_img) are updated in place by the load itself.
-Function ReconcileGraphTraces(graphName, loadedNames)
-	String graphName, loadedNames
-	String df = "root:" + graphName + ":"
-	String names = "", item, tr, wname, base, xname, cname
-	Variable i, n, r, g, b
-
-	// dataset names from HDF5ListGroup, without any group path
-	n = ItemsInList(loadedNames)
-	for (i = 0; i < n; i += 1)
-		item = StringFromList(i, loadedNames)
-		names = AddListItem(ParseFilePath(0, item, "/", 1, 0), names, ";", Inf)
-	endfor
-
-	// 1. stale exported waves: in the graph's folder, not in the file -> hide the trace
-	String traces = TraceNameList(graphName, ";", 1)
-	n = ItemsInList(traces)
-	for (i = 0; i < n; i += 1)
-		tr = StringFromList(i, traces)
-		Wave/Z w = TraceNameToWaveRef(graphName, tr)
-		if (!WaveExists(w))
-			continue
-		endif
-		if (!StringMatch(GetWavesDataFolder(w, 1), df))
-			continue									// not from this file's folder: leave it
-		endif
-		if (WhichListItem(NameOfWave(w), names) < 0)
-			ModifyGraph/W=$graphName hideTrace($tr) = 1
-			print "RefreshGraphData: " + tr + " is no longer in the file - hidden on " + graphName + \
-			      " (ModifyGraph/W=" + graphName + " hideTrace(" + tr + ")=0 to show it, RemoveFromGraph to drop it)"
-		endif
-	endfor
-
-	// 2. *_Y waves that have no trace yet -> append
-	traces = TraceNameList(graphName, ";", 1)
-	n = ItemsInList(names)
-	for (i = 0; i < n; i += 1)
-		wname = StringFromList(i, names)
-		if (!StringMatch(wname, "*_Y") || WhichListItem(wname, traces) >= 0)
-			continue
-		endif
-		base = wname[0, strlen(wname) - 3]
-		xname = base + "_X"
-		cname = base + "_color"
-		Wave/Z wy = $(df + wname)
-		Wave/Z wx = $(df + xname)
-		Wave/Z wc = $(df + cname)
-		if (!WaveExists(wy))
-			continue
-		endif
-		if (WaveExists(wx))
-			AppendToGraph/W=$graphName wy vs wx
-		else
-			AppendToGraph/W=$graphName wy
-		endif
-		if (WaveExists(wc) && WaveType(wc) != 0 && numpnts(wc) >= 3)		// numeric RGB in 0..1
-			r = round(wc[0] * 65535); g = round(wc[1] * 65535); b = round(wc[2] * 65535)
-			ModifyGraph/W=$graphName rgb($wname) = (r, g, b)
-		endif
-		print "RefreshGraphData: appended " + wname + " to " + graphName + " (new in the file)"
-	endfor
 End
 
 macro RefreshAllData()
@@ -497,86 +242,65 @@ Function RefreshAllGraphs()
 End
 
 function SetYError(graphName)
-	// Attach Y error bars to every *M_Y / *Mean_Y trace from its *E_Y / *Err_Y
-	// wave, then hide the error trace. Waves are only referenced when they
-	// exist, and hideTrace is only applied to real traces (an *_X wave is the
-	// parametric X of a trace, not a trace -> "can't use a parametric X wave").
 	string graphName
 	DoWindow /F $graphName
-
+	
 	string list = TraceNameList(graphName, ";", 1)
 	variable numTraces = ItemsInList(list)
 	variable i
 	for (i = 0; i < numTraces; i += 1)
 		string traceName = StringFromList(i, list)
 		string errString, errName, wNameY
-		if (strsearch(traceName, "M_Y", 0) >= 0 && strsearch(traceName, "Mean_Y", 0) < 0)
-			errString = ReplaceString("M_Y", traceName, "")
+		if (strsearch(traceName, "M_Y", 0) >= 0)
+			errString = ReplaceString("M_Y",traceName,"")
 			errName = errString + "E_Y"
+			wNameY = ":" + graphName + ":" + errString + "E_Y"
+			ErrorBars/T=0.5/L=0.5 $traceName Y,wave=($wNameY,$wNameY)
+			ModifyGraph opaque($traceName)=1
+			ModifyGraph hideTrace($errName)=1
 		elseif (strsearch(traceName, "Mean_Y", 0) >= 0)
-			errString = ReplaceString("Mean_Y", traceName, "")
+			errString = ReplaceString("Mean_Y",traceName,"")
 			errName = errString + "Err_Y"
-		else
-			continue
+			wNameY = ":" + graphName + ":" + errString + "Err_Y"
+			ErrorBars/T=0.5/L=0.5 $traceName Y,wave=($wNameY,$wNameY)
+			ModifyGraph opaque($traceName)=1
+			ModifyGraph hideTrace($errName)=1
 		endif
-		wNameY = ":" + graphName + ":" + errName
-		if (!WaveExists($wNameY))
-			continue
-		endif
-		ErrorBars/T=0.5/L=0.5 $traceName Y,wave=($wNameY,$wNameY)
-		ModifyGraph opaque($traceName)=1
-		HideTraceIfPresent(graphName, errName)
 	endfor
 end
 
 function SetXYError(graphName)
-	// As SetYError, plus X error bars from *E_X / *Err_X when that wave exists
-	// (falls back to Y-only error bars when it does not).
 	string graphName
 	DoWindow /F $graphName
-
+	
 	string list = TraceNameList(graphName, ";", 1)
 	variable numTraces = ItemsInList(list)
 	variable i
 	for (i = 0; i < numTraces; i += 1)
 		string traceName = StringFromList(i, list)
 		string errString, errNameX, errNameY, wNameX, wNameY
-		if (strsearch(traceName, "M_Y", 0) >= 0 && strsearch(traceName, "Mean_Y", 0) < 0)
-			errString = ReplaceString("M_Y", traceName, "")
+		if (strsearch(traceName, "M_Y", 0) >= 0)
+			errString = ReplaceString("M_Y",traceName,"")
 			errNameX = errString + "E_X"
 			errNameY = errString + "E_Y"
+			wNameX = ":" + graphName + ":" + errString + "E_X"
+			wNameY = ":" + graphName + ":" + errString + "E_Y"
+			ErrorBars/T=0.5/L=0.5 $traceName XY,wave=($wNameX,$wNameX),wave=($wNameY,$wNameY)
+			ModifyGraph opaque($traceName)=1
+			ModifyGraph hideTrace($errNameX)=1
+			ModifyGraph hideTrace($errNameY)=1
 		elseif (strsearch(traceName, "Mean_Y", 0) >= 0)
-			errString = ReplaceString("Mean_Y", traceName, "")
+			errString = ReplaceString("Mean_Y",traceName,"")
 			errNameX = errString + "Err_X"
 			errNameY = errString + "Err_Y"
-		else
-			continue
-		endif
-		wNameX = ":" + graphName + ":" + errNameX
-		wNameY = ":" + graphName + ":" + errNameY
-		if (!WaveExists($wNameY))
-			continue
-		endif
-		if (WaveExists($wNameX))
+			wNameX = ":" + graphName + ":" + errString + "Err_X"
+			wNameY = ":" + graphName + ":" + errString + "Err_Y"
 			ErrorBars/T=0.5/L=0.5 $traceName XY,wave=($wNameX,$wNameX),wave=($wNameY,$wNameY)
-		else
-			ErrorBars/T=0.5/L=0.5 $traceName Y,wave=($wNameY,$wNameY)
+			ModifyGraph opaque($traceName)=1
+			ModifyGraph hideTrace($errNameX)=1
+			ModifyGraph hideTrace($errNameY)=1
 		endif
-		ModifyGraph opaque($traceName)=1
-		// Only the *_Y error wave can be a trace; *_X is the X wave of that
-		// trace and must never be passed to hideTrace.
-		HideTraceIfPresent(graphName, errNameY)
 	endfor
-end
-
-function HideTraceIfPresent(graphName, traceName)
-	// ModifyGraph hideTrace on a name that is not a trace (or is an X wave)
-	// raises an error; check the trace list first.
-	string graphName, traceName
-	string list = TraceNameList(graphName, ";", 1)
-	if (WhichListItem(traceName, list) >= 0)
-		ModifyGraph/W=$graphName hideTrace($traceName)=1
-	endif
 end
 
 
